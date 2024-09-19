@@ -8,7 +8,7 @@ O padrão repositório é de uso popular para o acesso a dados em aplicações .
 
 O intuito desse projeto é suprir a necessidade da utilização de um repositório genérico em aplicações .NET onde a implementação do EF Core acaba se tornando inviável.
 
-Obs: Nomes de classes, métodos,  descrições e comentários em inglês para abranger mais pessoas.
+Obs: Nomes de classes, métodos, descrições e comentários em inglês para abranger mais pessoas.
 
 ## Como Utilizar
 
@@ -16,7 +16,7 @@ A arquitetura já está toda preparada para ser utilizada, desde a configuraçã
 
 ### Configurando a Conexão com Banco de Dados
 
-A primeira coisa a se fazer é configurar a 'string' de conexão com o banco de dados, substituindo o valor da variável `connectionString`, que se encontra na classe `DbConnectionConfig`. 
+A primeira coisa a se fazer é configurar a 'string' de conexão com o banco de dados, substituindo o valor da variável `connectionString`, que se encontra na classe `DbConnectionConfig` na pasta `Config` da camada `Infrastructure`.
 ```csharp
 public static IServiceCollection ResolveDbConnection(this IServiceCollection services)
 {
@@ -27,7 +27,7 @@ public static IServiceCollection ResolveDbConnection(this IServiceCollection ser
 
 A classe modelo se refere aos objetos que serão manipulados nas camadas de regra de negócio da aplicação.
 
-O próximo passo é adicionar uma nova classe na pasta `Models` da camada `Domain` e faça com que ela herde da classe base `BaseModel`. É aconselhável que suas propriedades possuam nomes mais amigáveis, para facilitar no entendimento e nas atribuições de seus respectivos valores.
+O próximo passo é adicionar uma nova classe na pasta `Models` da camada `Domain` e fazer com que ela herde da classe base `BaseModel`. É aconselhável que suas propriedades possuam nomes mais amigáveis, para facilitar no entendimento e nas atribuições de seus respectivos valores.
 ```csharp
 public class Model : BaseModel
 {
@@ -41,7 +41,7 @@ public class Model : BaseModel
 
 A classe de entidade se refere aos objetos que serão manipulados na camada de comunicação com o banco de dados.
 
-Agora é a vez da classe de entidade ser criada na pasta `Entities` da mesma camada `Domain`,  onde além dela herdar da classe base `BaseEntity`, ela deverá conter uma anotação com o nome da tabela da qual essa classe representa. Suas propriedades devem possuir os mesmos nomes contidos nos campos da respectiva tabela.
+Agora é a vez da classe de entidade ser criada na pasta `Entities` da mesma camada `Domain`, onde além dela herdar da classe base `BaseEntity`, ela deverá conter uma anotação com o nome da tabela da qual essa classe representa. Suas propriedades devem possuir os mesmos nomes contidos nos campos da respectiva tabela.
 ```csharp
 [Table("TABLE_NAME")]
 public class Entity : BaseEntity
@@ -54,7 +54,7 @@ public class Entity : BaseEntity
 
 ### Mapeamento entre as classes
 
-Para que a camada de conexão com o banco de dados saiba a relação entre as propriedades das classes de modelo e de entidades, devemos configurar o mapeamento entre as classes, com a ajuda do 'AutoMapper'.
+Para que a camada de conexão com o banco de dados saiba a relação entre as propriedades das classes de modelo e de entidade, devemos configurar o mapeamento entre as classes, com a ajuda do 'AutoMapper'.
 
 A configuração é feita na classe `AutomapperConfig` na pasta `Config` da camada `Domain`.
 ```csharp
@@ -72,7 +72,7 @@ public AutomapperConfig()
 
 Para que os métodos das operações padrões do CRUD estejam disponíveis para as camadas de regra de negócio, uma classe concreta do repositório deve ser criada, assim como sua interface.
 
-Comece criando a interface do repositório na pasta `Repositories\Intf` da camada `Infrastructure`,  herdando da interface base `IBaseRepository<TModel, TEntity>`, informando os respectivos tipos das classes modelo e de entidade criadas anteriormente.
+Comece criando a interface do repositório na pasta `Repositories\Intf` da camada `Infrastructure`, herdando da interface base `IBaseRepository<TModel, TEntity>`, informando os respectivos tipos das classes modelo e de entidade criadas anteriormente.
 ```csharp
 public interface IRepository : IBaseRepository<Model, Entity>
 {
@@ -89,14 +89,21 @@ public class Repository : BaseRepository<Model, Entity>, IRepository
 }
 ```
 
-O próximo passo é adicionar o serviço do repositório na classe de configuração de injeção de dependências `DependencyInjectionConfig`, passando o tipo da interface e da classe criadas anteriormente.
+O próximo passo é adicionar o serviço do repositório na classe de configuração de injeção de dependências `DependencyInjectionConfig`, que se encontra na camada `IoC`, passando o tipo da interface e da classe criadas anteriormente.
 ```csharp
 public static IServiceCollection ResolveDependencies(this IServiceCollection services)
 {
     services.AddScoped<IRepository, Repository>();
 ```
 
-Com o repositório adicionado na injeção de dependências, chegou a vez de incluí-lo na classe `UnitOfWork`, adicionando uma nova propriedade para o repositório recém criado e injetando sua respectiva instância no controlador.
+Com o repositório adicionado na injeção de dependências, chegou a vez de incluí-lo no Unit of Work. Primeiro adicione uma nova propriedade para o repositório recém criado em sua interface `IUnitOfWork`, que se encontra na pasta `UnitOfWork\Intf` da camada `Infrastructure`.
+```csharp
+public interface IUnitOfWork
+{
+    IRepository Repository { get; }
+```
+
+Agora na classe `UnitOfWork`, que se encontra na pasta `UnitOfWork\Impl` da mesma camada `Infrastructure`, adicione a propriedade do repositório, injetando sua respectiva instância no controlador.
 ```csharp
 public class UnitOfWork : IUnitOfWork
 {
@@ -158,7 +165,7 @@ public interface IService : IBaseService<Model, Entity>
 }
 ```
 
-Com a interface criada, agora é a vez de criar a classe do serviço na pasta `Services\Impl` da mesma camada `Application`, implementando sua interface e herdando da classe base `BaseService<TModel, TEntity, TIRepository>`, informando os respectivos tipos da classe modelo,  da classe de entidade e da interface do repositório escolhido, além de adicionar uma propriedade para acessar o `UnitOfWork`, fazer sua injeção de dependência no construtor e passá-lo ao construtor base, junto com a instância do repositório selecionado como principal.
+Com a interface criada, agora é a vez de criar a classe do serviço na pasta `Services\Impl` da mesma camada `Application`, implementando sua interface e herdando da classe base `BaseService<TModel, TEntity, TIRepository>`, informando os respectivos tipos da classe modelo, da classe de entidade e da interface do repositório escolhido, além de adicionar uma propriedade para acessar o `UnitOfWork`, fazer sua injeção de dependência no construtor e passá-lo ao construtor base, junto com a instância do repositório selecionado como principal.
 ```csharp
 public class Service : BaseService<Model, Entity, IRepository>, IService
 {
@@ -171,14 +178,14 @@ public class Service : BaseService<Model, Entity, IRepository>, IService
 }
 ```
 
-O próximo passo é adicionar o serviço na classe de configuração de injeção de dependências `DependencyInjectionConfig`, passando o tipo da interface e da classe do serviço criado.
+O próximo passo é adicionar o serviço na classe de configuração de injeção de dependências `DependencyInjectionConfig`, que se encontra na camada `IoC`, passando o tipo da interface e da classe do serviço criado.
 ```csharp
 public static IServiceCollection ResolveDependencies(this IServiceCollection services)
 {
     services.AddScoped<IService, Service>();
 ```
 
-Com esses passos, os controladores, que se encontram na pasta `Controllers` da camada `DapperGenRep.API`,  podem acessar os métodos padrões  do serviço, adicionando uma propriedade e injetando sua instância pelo construtor.
+Com esses passos, os controladores, que se encontram na pasta `Controllers` da camada `DapperGenRep.API`, podem acessar os métodos padrões do serviço, adicionando uma propriedade e injetando sua instância pelo construtor.
 ```csharp
 [ApiController]
 [Route("api/[controller]")]
@@ -216,11 +223,11 @@ public class DapperGenRepController : BaseController
         _service = service;
     }
     
-	[HttpGet("{filter}")]
-	public async Task<ActionResult<Model>> Get(int filter)
-	{
-	    Model response = await _service.GetAsync(e => e.ID == filter);
-	    return HandleResponse(response);
-	}
+    [HttpGet("{filter}")]
+    public async Task<ActionResult<Model>> Get(int filter)
+    {
+        Model response = await _service.GetAsync(e => e.ID == filter);
+        return HandleResponse(response);
+    }
 }
 ```
