@@ -219,7 +219,7 @@ public class DapperGenRepController : BaseController
 	[HttpGet("{filter}")]
 	public async Task<ActionResult<Model>> Get(int filter)
 	{
-	    Model response = await _service.GetAsync(e => e.ID == 	filter);
+	    Model response = await _service.GetAsync(e => e.ID == filter);
 	    return HandleResponse(response);
 	}
 }
